@@ -8,23 +8,23 @@ const perkSchema = Joi.object({
   // description is optional
   description: Joi.string().allow(''),
   // category must be one of the defined values, default to 'other'
-  category: Joi.string().valid('food','tech','travel','fitness','other').default('other'),
+  category: Joi.string().valid('food', 'tech', 'travel', 'fitness', 'other').default('other'),
   // discountPercent must be between 0 and 100, default to 0
   discountPercent: Joi.number().min(0).max(100).default(0),
   // merchant is optional
   merchant: Joi.string().allow(''),
   ccreatedBy: Joi.forbidden(),
 
-}); 
+});
 
-  
+
 
 // Filter perks by exact title match if title query parameter is provided 
 export async function filterPerks(req, res, next) {
   try {
-    const { title } = req.query     ;
+    const { title } = req.query;
     if (title) {
-      const perks = await Perk.find ({ title: title}).sort({ createdAt: -1 });
+      const perks = await Perk.find({ title: title }).sort({ createdAt: -1 });
       console.log(perks);
       res.status(200).json(perks)
     }
@@ -55,20 +55,20 @@ export async function getAllPerksPublic(req, res, next) {
   try {
     // Extract query parameters for search and filter
     const { search, merchant } = req.query;
-    
+
     // Build query object dynamically
     let query = {};
-    
+
     // If search parameter exists, search by title (case-insensitive)
     if (search && search.trim()) {
       query.title = { $regex: search.trim(), $options: 'i' };
     }
-    
+
     // If merchant parameter exists, filter by exact merchant name
     if (merchant && merchant.trim()) {
       query.merchant = merchant.trim();
     }
-    
+
     // Fetch perks with the built query, populate creator info, and sort by newest first
     const perks = await Perk
       .find(query)
@@ -100,7 +100,7 @@ export async function createPerk(req, res, next) {
     const { value, error } = perkSchema.validate(req.body);
     if (error) return res.status(400).json({ message: error.message });
     // ...value spreads the validated fields
-    const doc = await Perk.create({ ...value,createdBy: req.user.id});
+    const doc = await Perk.create({ ...value, createdBy: req.user.id });
     res.status(201).json({ perk: doc });
   } catch (err) {
     if (err.code === 11000) return res.status(409).json({ message: 'Duplicate perk for this merchant' });
@@ -123,12 +123,21 @@ export async function updatePerk(req, res, next) {
     // const { value, error } = perkSchema.validate(req.body , {abortEarly:false, stripUnknown:true, convert:true });
     if (error) return res.status(400).json({ message: error.message });
     // $set operator is used to update only the fields provided in value
-    const doc = await Perk.findByIdAndUpdate(req.params.id, {$set: value}, { new: true, runValidators: true });
+    const doc = await Perk.findByIdAndUpdate(req.params.id, { $set: value }, { new: true, runValidators: true });
     if (!doc) return res.status(404).json({ message: 'Perk not found' });
     res.json({ perk: doc });
   } catch (err) { next(err); }
 }
 // TODO 1: Implement delete a perk by ID
 export async function deletePerk(req, res, next) {
- 
+  try {
+    if (!req.user?.id) return res.status(401).json({ message: 'Unauthorized' });
+
+    const perk = await Perk.findByIdAndDelete(req.params.id);
+    if (!perk) return res.status(404).json({ message: 'Perk not found' });
+
+    res.json({ message: 'Perk deleted' });
+  } catch (err) {
+    next(err);
+  }
 }

@@ -52,6 +52,7 @@ export default function PerkDetails() {
   const [perk, setPerk] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -66,9 +67,20 @@ export default function PerkDetails() {
       })
   }, [id])
 
- // TODO 2: Implement delete functionality with a window confirm dialog 
+  // TODO 2: Implement delete functionality with a window confirm dialog 
   async function handleDelete() {
-   
+    if (!id || deleting) return
+    const confirmed = window.confirm('Delete this perk permanently?')
+    if (!confirmed) return
+
+    try {
+      setDeleting(true)
+      await api.delete('/perks/' + id)
+      nav('/perks', { replace: true })
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Failed to delete perk')
+      setDeleting(false)
+    }
   }
 
   if (loading) {
@@ -104,7 +116,7 @@ export default function PerkDetails() {
 
       {/* Main card with gradient background */}
       <div className={`card bg-gradient-to-br ${theme.gradient} ${theme.border} border-2`}>
-        
+
         {/* Category icon */}
         <div className="flex justify-center mb-4">
           <span className={`material-symbols-outlined ${theme.iconColor}`} style={{ fontSize: '80px', fontWeight: '300' }}>
@@ -140,7 +152,7 @@ export default function PerkDetails() {
 
         {/* Details section */}
         <div className="space-y-4 mb-8">
-          
+
           {/* Merchant */}
           {perk.merchant && (
             <div className="bg-white rounded-xl p-4 shadow-sm border border-zinc-200">
@@ -184,19 +196,20 @@ export default function PerkDetails() {
 
         {/* Action buttons */}
         <div className="flex gap-3 justify-center flex-wrap">
-          <Link 
-            to={`/perks/${id}`} 
+          <Link
+            to={`/perks/${id}`}
             className={`btn bg-white ${theme.border} border-2 ${theme.accentText} hover:bg-opacity-90 font-semibold px-6 py-3 flex items-center gap-2`}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>edit</span>
             Edit Perk
           </Link>
           <button
-            
+            onClick={handleDelete}
+            disabled={deleting}
             className="btn bg-white border-2 border-red-200 text-red-600 hover:bg-red-50 font-semibold px-6 py-3 flex items-center gap-2"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete</span>
-            Delete Perk
+            {deleting ? 'Deleting...' : 'Delete Perk'}
           </button>
         </div>
       </div>
